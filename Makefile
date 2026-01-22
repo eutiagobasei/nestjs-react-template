@@ -158,6 +158,9 @@ db-seed:
 
 ## Reset completo do banco (CUIDADO: apaga todos os dados)
 db-reset:
+	@echo "⚠️  ATENÇÃO: Este comando apaga TODOS os dados do banco de dados!"
+	@echo ""
+	@read -p "Digite 'sim' para confirmar: " confirm && [ "$$confirm" = "sim" ] || (echo "❌ Operação cancelada" && exit 1)
 	@docker compose -f docker/local/docker-compose.yml exec api pnpm prisma migrate reset
 
 # --------------------------------------------
@@ -193,13 +196,21 @@ deploy-prod:
 # 🧹 Limpeza
 # --------------------------------------------
 
-## Remove containers, volumes e imagens locais
+## Remove containers, volumes e imagens locais (CUIDADO: apaga dados!)
 clean:
+	@echo "⚠️  ATENÇÃO: Este comando apaga TODOS os volumes (dados do banco, Redis, etc)!"
+	@echo ""
+	@read -p "Digite 'sim' para confirmar: " confirm && [ "$$confirm" = "sim" ] || (echo "❌ Operação cancelada" && exit 1)
 	@docker compose -f docker/local/docker-compose.yml down -v --rmi local
 	@echo "✅ Containers, volumes e imagens locais removidos"
 
-## Reset completo: limpa tudo e reconfigura
-reset: clean setup
+## Reset completo: limpa tudo e reconfigura (CUIDADO: apaga dados!)
+reset:
+	@echo "⚠️  ATENÇÃO: Este comando apaga TODOS os dados e reconfigura do zero!"
+	@echo ""
+	@read -p "Digite 'sim' para confirmar: " confirm && [ "$$confirm" = "sim" ] || (echo "❌ Operação cancelada" && exit 1)
+	@$(MAKE) clean
+	@$(MAKE) setup
 	@echo "✅ Ambiente resetado completamente"
 
 # --------------------------------------------
