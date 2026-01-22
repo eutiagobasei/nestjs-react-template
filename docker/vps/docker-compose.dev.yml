@@ -1,0 +1,112 @@
+# ============================================
+# 🔷 Docker Compose - VPS DEV
+# ============================================
+# Ambiente de desenvolvimento/staging na VPS
+# Usado para testar antes de ir para produção
+# ============================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 🔷 API
+  # ============================================
+  api-dev:
+    image: ${REGISTRY}/api:${TAG:-dev-latest}
+    container_name: ${PROJECT_NAME}-api-dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+    networks:
+      - app-dev
+      - traefik-public
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}-api-dev.rule=Host(`api-dev.${DOMAIN}`)"
+      - "traefik.http.routers.${PROJECT_NAME}-api-dev.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}-api-dev.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${PROJECT_NAME}-api-dev.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+
+  # ============================================
+  # 🔷 WEB
+  # ============================================
+  web-dev:
+    image: ${REGISTRY}/web:${TAG:-dev-latest}
+    container_name: ${PROJECT_NAME}-web-dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    networks:
+      - app-dev
+      - traefik-public
+    depends_on:
+      - api-dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}-web-dev.rule=Host(`dev.${DOMAIN}`)"
+      - "traefik.http.routers.${PROJECT_NAME}-web-dev.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}-web-dev.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${PROJECT_NAME}-web-dev.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+
+  # ============================================
+  # 🗃️ Database
+  # ============================================
+  db-dev:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - app-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # 🔴 Redis
+  # ============================================
+  redis-dev:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis-dev
+    restart: unless-stopped
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - app-dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ============================================
+# 🌐 Networks
+# ============================================
+networks:
+  app-dev:
+    driver: bridge
+  traefik-public:
+    external: true
+
+# ============================================
+# 💾 Volumes
+# ============================================
+volumes:
+  postgres_dev_data:
+  redis_dev_data:

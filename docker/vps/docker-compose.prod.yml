@@ -1,0 +1,168 @@
+# ============================================
+# 🔷 Docker Compose - VPS PROD
+# ============================================
+# Ambiente de produção na VPS
+# Configurações de segurança e performance
+# ============================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # 🔷 API
+  # ============================================
+  api-prod:
+    image: ${REGISTRY}/api:${TAG:-latest}
+    container_name: ${PROJECT_NAME}-api-prod
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+    networks:
+      - app-prod
+      - traefik-public
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}-api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.${PROJECT_NAME}-api.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${PROJECT_NAME}-api.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+      # Rate limiting
+      - "traefik.http.middlewares.${PROJECT_NAME}-api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.${PROJECT_NAME}-api-ratelimit.ratelimit.burst=50"
+      - "traefik.http.routers.${PROJECT_NAME}-api.middlewares=${PROJECT_NAME}-api-ratelimit"
+
+  # ============================================
+  # 🔷 WEB
+  # ============================================
+  web-prod:
+    image: ${REGISTRY}/web:${TAG:-latest}
+    container_name: ${PROJECT_NAME}-web-prod
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    networks:
+      - app-prod
+      - traefik-public
+    depends_on:
+      - api-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}-web.rule=Host(`${DOMAIN}`) || Host(`www.${DOMAIN}`)"
+      - "traefik.http.routers.${PROJECT_NAME}-web.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.${PROJECT_NAME}-web.loadbalancer.server.port=3000"
+      - "traefik.docker.network=traefik-public"
+      # Redirect www to non-www
+      - "traefik.http.middlewares.${PROJECT_NAME}-www-redirect.redirectregex.regex=^https://www\\.(.+)"
+      - "traefik.http.middlewares.${PROJECT_NAME}-www-redirect.redirectregex.replacement=https://$${1}"
+      - "traefik.http.middlewares.${PROJECT_NAME}-www-redirect.redirectregex.permanent=true"
+      - "traefik.http.routers.${PROJECT_NAME}-web.middlewares=${PROJECT_NAME}-www-redirect"
+
+  # ============================================
+  # 🗃️ Database
+  # ============================================
+  db-prod:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - app-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # NUNCA expor porta do banco em produção!
+
+  # ============================================
+  # 🔴 Redis
+  # ============================================
+  redis-prod:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis-prod
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - app-prod
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ============================================
+# 🌐 Networks
+# ============================================
+networks:
+  app-prod:
+    driver: bridge
+  traefik-public:
+    external: true
+
+# ============================================
+# 💾 Volumes
+# ============================================
+volumes:
+  postgres_prod_data:
+  redis_prod_data:

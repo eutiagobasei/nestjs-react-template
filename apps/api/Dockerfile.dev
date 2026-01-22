@@ -1,0 +1,41 @@
+# ============================================
+# 🔷 API Dockerfile - Development
+# ============================================
+
+FROM node:20-alpine
+
+# Instalar pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Criar diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de configuração do monorepo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY turbo.json ./
+
+# Copiar package.json dos pacotes
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+
+# Copiar package.json da API
+COPY apps/api/package.json ./apps/api/
+
+# Instalar dependências
+RUN pnpm install
+
+# Copiar código fonte dos pacotes compartilhados
+COPY packages ./packages
+
+# Copiar código fonte da API
+COPY apps/api ./apps/api
+
+# Definir diretório de trabalho da API
+WORKDIR /app/apps/api
+
+# Expor porta
+EXPOSE 3000
+
+# Comando de desenvolvimento
+CMD ["pnpm", "run", "start:dev"]

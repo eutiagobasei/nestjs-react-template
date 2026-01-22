@@ -1,0 +1,41 @@
+# ============================================
+# 🔷 WEB Dockerfile - Development
+# ============================================
+
+FROM node:20-alpine
+
+# Instalar pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Criar diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de configuração do monorepo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY turbo.json ./
+
+# Copiar package.json dos pacotes
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+
+# Copiar package.json do Web
+COPY apps/web/package.json ./apps/web/
+
+# Instalar dependências
+RUN pnpm install
+
+# Copiar código fonte dos pacotes compartilhados
+COPY packages ./packages
+
+# Copiar código fonte do Web
+COPY apps/web ./apps/web
+
+# Definir diretório de trabalho do Web
+WORKDIR /app/apps/web
+
+# Expor porta
+EXPOSE 3000
+
+# Comando de desenvolvimento
+CMD ["pnpm", "run", "dev"]

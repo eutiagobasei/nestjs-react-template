@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # 🔷 API - NestJS Backend
+  # ============================================
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: ${PROJECT_NAME:-myapp}-api-local
+    restart: unless-stopped
+    volumes:
+      # Código fonte com hot reload
+      - ../../apps/api/src:/app/apps/api/src
+      - ../../apps/api/test:/app/apps/api/test
+      # Pacotes compartilhados
+      - ../../packages:/app/packages
+      # Prisma schemas
+      - ../../apps/api/prisma:/app/apps/api/prisma
+      # IMPORTANTE: node_modules fica no volume, NÃO no host
+      - api_node_modules:/app/node_modules
+      - api_app_node_modules:/app/apps/api/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/${PROJECT_NAME:-myapp}_dev
+      - JWT_SECRET=dev-secret-change-in-production-min-32-chars
+      - JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production
+      - API_PORT=3000
+    ports:
+      - "${API_PORT:-3001}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - local-network
+
+  # ============================================
+  # 🔷 WEB - Next.js Frontend
+  # ============================================
+  web:
+    build:
+      context: ../../
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: ${PROJECT_NAME:-myapp}-web-local
+    restart: unless-stopped
+    volumes:
+      # Código fonte com hot reload
+      - ../../apps/web/src:/app/apps/web/src
+      - ../../apps/web/public:/app/apps/web/public
+      # Pacotes compartilhados
+      - ../../packages:/app/packages
+      # IMPORTANTE: node_modules fica no volume, NÃO no host
+      - web_node_modules:/app/node_modules
+      - web_app_node_modules:/app/apps/web/node_modules
+      # Next.js cache
+      - web_next:/app/apps/web/.next
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:${API_PORT:-3001}
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+    networks:
+      - local-network
+
+  # ============================================
+  # 🗃️ Database - PostgreSQL
+  # ============================================
+  db:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME:-myapp}-db-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${PROJECT_NAME:-myapp}_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - local-network
+
+  # ============================================
+  # 🔴 Redis - Cache/Sessions (opcional)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME:-myapp}-redis-local
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - local-network
+
+# ============================================
+# 🌐 Networks
+# ============================================
+networks:
+  local-network:
+    driver: bridge
+
+# ============================================
+# 💾 Volumes
+# ============================================
+volumes:
+  # Database
+  postgres_data:
+  redis_data:
+  # Node modules isolados (NÃO vão para o host)
+  api_node_modules:
+  api_app_node_modules:
+  web_node_modules:
+  web_app_node_modules:
+  web_next:
