@@ -18,7 +18,41 @@ jobs:
   test:
     name: Lint & Test
     runs-on: ubuntu-latest
-    
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: test-jwt-secret-min-32-characters-long
+      JWT_REFRESH_SECRET: test-refresh-secret-min-32-characters
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY_DAYS: 7
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,6 +70,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @*/api exec prisma generate
+
+      - name: Run Prisma Migrations
+        run: pnpm --filter @*/api exec prisma migrate deploy
 
       - name: Lint
         run: pnpm lint

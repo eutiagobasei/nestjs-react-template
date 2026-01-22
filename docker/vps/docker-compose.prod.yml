@@ -20,11 +20,17 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY:-15m}
+      - JWT_REFRESH_EXPIRY_DAYS=${JWT_REFRESH_EXPIRY_DAYS:-7}
+      - REDIS_HOST=redis-prod
+      - REDIS_PORT=6379
     networks:
       - app-prod
       - traefik-public
     depends_on:
       db-prod:
+        condition: service_healthy
+      redis-prod:
         condition: service_healthy
     deploy:
       resources:

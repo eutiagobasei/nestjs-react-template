@@ -4,7 +4,10 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { CacheModule } from './cache/cache.module';
+import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
@@ -25,10 +28,17 @@ import { PrismaModule } from './prisma/prisma.module';
     // Database
     PrismaModule,
 
+    // Cache (Redis)
+    CacheModule,
+
+    // Jobs (BullMQ)
+    JobsModule,
+
     // Feature Modules
     HealthModule,
     AuthModule,
     UsersModule,
+    OrganizationsModule,
   ],
 })
 export class AppModule {}

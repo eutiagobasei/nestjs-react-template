@@ -26,11 +26,17 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/${PROJECT_NAME:-myapp}_dev
       - JWT_SECRET=dev-secret-change-in-production-min-32-chars
       - JWT_REFRESH_SECRET=dev-refresh-secret-change-in-production
+      - JWT_ACCESS_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY_DAYS=7
       - API_PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     ports:
       - "${API_PORT:-3001}:3000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - local-network

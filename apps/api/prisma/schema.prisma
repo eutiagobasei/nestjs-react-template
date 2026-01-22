@@ -25,6 +25,7 @@ model User {
 
   // Relations
   refreshTokens RefreshToken[]
+  organizations OrganizationMember[]
 
   @@map("users")
 }
@@ -46,9 +47,71 @@ model RefreshToken {
 }
 
 // ============================================
+// Organization Model
+// ============================================
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  settings    Json     @default("{}")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members OrganizationMember[]
+  invites OrganizationInvite[]
+
+  @@map("organizations")
+}
+
+// ============================================
+// Organization Member Model
+// ============================================
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole  @default(MEMBER)
+  joinedAt       DateTime @default(now())
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+// ============================================
+// Organization Invite Model
+// ============================================
+model OrganizationInvite {
+  id             String   @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrgRole  @default(MEMBER)
+  token          String   @unique @default(cuid())
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_invites")
+}
+
+// ============================================
 // Enums
 // ============================================
 enum Role {
   USER
   ADMIN
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
