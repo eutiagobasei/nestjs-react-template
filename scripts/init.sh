@@ -53,6 +53,11 @@ find . -type f \( -name "*.json" -o -name "*.md" -o -name "*.tsx" -o -name "*.ts
     replace_placeholders "$file"
 done
 
+# Gerar JWT secrets seguros automaticamente
+echo -e "${BLUE}🔐 Gerando JWT secrets seguros...${NC}"
+JWT_SECRET=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
+JWT_REFRESH_SECRET=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 64)
+
 # Criar arquivo .env.example
 echo -e "${BLUE}📄 Criando .env.example...${NC}"
 cat > .env.example << EOF
@@ -72,12 +77,18 @@ REDIS_PORT=6379
 # Database
 DATABASE_URL=postgresql://postgres:postgres@db:5432/${PROJECT_NAME}_dev
 
-# JWT (GERE NOVOS SECRETS EM PRODUÇÃO!)
-JWT_SECRET=change-this-secret-in-production-min-32-chars
-JWT_REFRESH_SECRET=change-this-refresh-secret-too
+# JWT (secrets gerados automaticamente)
+JWT_SECRET=$JWT_SECRET
+JWT_REFRESH_SECRET=$JWT_REFRESH_SECRET
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY_DAYS=7
 
 # API
 ALLOWED_ORIGINS=http://localhost:3000
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
 
 # Frontend
 NEXT_PUBLIC_API_URL=http://localhost:3001
@@ -122,21 +133,53 @@ git add .
 git commit -m "🎉 Initial commit - Project setup"
 
 echo ""
-echo -e "${GREEN}╔════════════════════════════════════════╗"
-echo "║     ✅ Setup Completo!                 ║"
-echo "╚════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}✅ Configuração inicial completa!${NC}"
 echo ""
-echo -e "Próximos passos:"
-echo ""
-echo -e "  ${YELLOW}1.${NC} Configure o ambiente Docker:"
-echo -e "     ${BLUE}make setup${NC}"
-echo ""
-echo -e "  ${YELLOW}2.${NC} Inicie o desenvolvimento:"
-echo -e "     ${BLUE}make dev${NC}"
-echo ""
-echo -e "  ${YELLOW}3.${NC} Acesse:"
-echo -e "     Frontend: ${BLUE}http://localhost:$WEB_PORT${NC}"
-echo -e "     API:      ${BLUE}http://localhost:$API_PORT${NC}"
-echo ""
+
+# Perguntar se quer iniciar o Docker automaticamente
+echo -e "${YELLOW}🐳 Deseja iniciar o ambiente Docker agora?${NC}"
+read -p "   (s/n): " START_DOCKER
+
+if [[ "$START_DOCKER" =~ ^[Ss]$ ]]; then
+    echo ""
+    echo -e "${BLUE}🚀 Iniciando ambiente Docker...${NC}"
+    echo -e "${YELLOW}   Isso pode demorar alguns minutos na primeira vez.${NC}"
+    echo ""
+
+    make setup
+
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════╗"
+    echo "║     ✅ Tudo Pronto!                    ║"
+    echo "╚════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  🌐 Acesse:"
+    echo -e "     Frontend:   ${BLUE}http://localhost:$WEB_PORT${NC}"
+    echo -e "     API:        ${BLUE}http://localhost:$API_PORT${NC}"
+    echo -e "     Bull Board: ${BLUE}http://localhost:$API_PORT/admin/queues${NC}"
+    echo ""
+    echo -e "  📋 Comandos úteis:"
+    echo -e "     ${BLUE}make dev${NC}      - Iniciar desenvolvimento"
+    echo -e "     ${BLUE}make stop${NC}     - Parar containers"
+    echo -e "     ${BLUE}make logs${NC}     - Ver logs"
+    echo ""
+else
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════╗"
+    echo "║     ✅ Setup Completo!                 ║"
+    echo "╚════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  Próximos passos:"
+    echo ""
+    echo -e "  ${YELLOW}1.${NC} Inicie o ambiente Docker:"
+    echo -e "     ${BLUE}make setup${NC}"
+    echo ""
+    echo -e "  ${YELLOW}2.${NC} Acesse:"
+    echo -e "     Frontend:   ${BLUE}http://localhost:$WEB_PORT${NC}"
+    echo -e "     API:        ${BLUE}http://localhost:$API_PORT${NC}"
+    echo -e "     Bull Board: ${BLUE}http://localhost:$API_PORT/admin/queues${NC}"
+    echo ""
+fi
+
 echo -e "  ${YELLOW}💡${NC} Para mudar as portas, edite o arquivo ${BLUE}.env${NC}"
 echo ""
