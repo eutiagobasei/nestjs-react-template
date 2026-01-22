@@ -21,6 +21,12 @@ echo "║     🚀 Setup do Projeto                ║"
 echo "╚════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# Remover .git do template se existir
+if [ -d ".git" ]; then
+    echo -e "${BLUE}🗑️  Removendo .git do template...${NC}"
+    rm -rf .git
+fi
+
 # Solicitar informações do projeto
 echo -e "${YELLOW}📝 Configuração do Projeto${NC}"
 echo ""
@@ -133,53 +139,26 @@ git add .
 git commit -m "🎉 Initial commit - Project setup"
 
 echo ""
-echo -e "${GREEN}✅ Configuração inicial completa!${NC}"
+echo -e "${BLUE}🚀 Iniciando ambiente Docker...${NC}"
+echo -e "${YELLOW}   Isso pode demorar alguns minutos na primeira vez.${NC}"
 echo ""
 
-# Perguntar se quer iniciar o Docker automaticamente
-echo -e "${YELLOW}🐳 Deseja iniciar o ambiente Docker agora?${NC}"
-read -p "   (s/n): " START_DOCKER
+make setup
 
-if [[ "$START_DOCKER" =~ ^[Ss]$ ]]; then
-    echo ""
-    echo -e "${BLUE}🚀 Iniciando ambiente Docker...${NC}"
-    echo -e "${YELLOW}   Isso pode demorar alguns minutos na primeira vez.${NC}"
-    echo ""
-
-    make setup
-
-    echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════╗"
-    echo "║     ✅ Tudo Pronto!                    ║"
-    echo "╚════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "  🌐 Acesse:"
-    echo -e "     Frontend:   ${BLUE}http://localhost:$WEB_PORT${NC}"
-    echo -e "     API:        ${BLUE}http://localhost:$API_PORT${NC}"
-    echo -e "     Bull Board: ${BLUE}http://localhost:$API_PORT/admin/queues${NC}"
-    echo ""
-    echo -e "  📋 Comandos úteis:"
-    echo -e "     ${BLUE}make dev${NC}      - Iniciar desenvolvimento"
-    echo -e "     ${BLUE}make stop${NC}     - Parar containers"
-    echo -e "     ${BLUE}make logs${NC}     - Ver logs"
-    echo ""
-else
-    echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════╗"
-    echo "║     ✅ Setup Completo!                 ║"
-    echo "╚════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "  Próximos passos:"
-    echo ""
-    echo -e "  ${YELLOW}1.${NC} Inicie o ambiente Docker:"
-    echo -e "     ${BLUE}make setup${NC}"
-    echo ""
-    echo -e "  ${YELLOW}2.${NC} Acesse:"
-    echo -e "     Frontend:   ${BLUE}http://localhost:$WEB_PORT${NC}"
-    echo -e "     API:        ${BLUE}http://localhost:$API_PORT${NC}"
-    echo -e "     Bull Board: ${BLUE}http://localhost:$API_PORT/admin/queues${NC}"
-    echo ""
-fi
-
+echo ""
+echo -e "${GREEN}╔════════════════════════════════════════╗"
+echo "║     ✅ Tudo Pronto!                    ║"
+echo "╚════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  🌐 Acesse:"
+echo -e "     Frontend:   ${BLUE}http://localhost:$WEB_PORT${NC}"
+echo -e "     API:        ${BLUE}http://localhost:$API_PORT${NC}"
+echo -e "     Bull Board: ${BLUE}http://localhost:$API_PORT/admin/queues${NC}"
+echo ""
+echo -e "  📋 Comandos úteis:"
+echo -e "     ${BLUE}make dev${NC}      - Iniciar desenvolvimento"
+echo -e "     ${BLUE}make stop${NC}     - Parar containers"
+echo -e "     ${BLUE}make logs${NC}     - Ver logs"
+echo ""
 echo -e "  ${YELLOW}💡${NC} Para mudar as portas, edite o arquivo ${BLUE}.env${NC}"
 echo ""
